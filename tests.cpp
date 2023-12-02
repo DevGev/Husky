@@ -1,0 +1,128 @@
+int main()
+{
+    memset(virtual_disk, 0, DISK_SIZE);
+    super_node_t super_node;
+    strcpy(super_node.magic, "magisk.1690243253");
+    super_node.nodes_count = 10000;
+    super_node.data_block_size = 512 * 10;
+    super_node.data_blocks_count = (DISK_SIZE - 512 * 2 - super_node.nodes_count * sizeof(node_t)) / super_node.data_block_size;
+    memcpy(virtual_disk, &super_node, sizeof(super_node_t));
+
+    find_filesystem();
+    create_root_directory();
+
+    printf("super: sizeof node_t %ld\n", sizeof(node_t));
+    printf("super: filesystem root sector %d\n", fs_start);
+    printf("super: number of nodes in fs: %d\n", super_node.nodes_count);
+    printf("super: number of blocks in fs: %d\n", super_node.data_blocks_count);
+
+    static uint8_t imgdata[1041867];
+    FILE* fptr1 = fopen("./picture.png","r");
+    fread(imgdata, 1041867, 1, fptr1);
+
+    /*char data[1 * MB];
+    memset(data, '1', 1 * MB);
+    write_file("/test_file", data, 1 * MB);*/
+    char data[1 * MB + 5120 * 2 - 1];
+    memset(data, 'H', 1 * MB + 5120*2 - 1);
+    data[1 * MB + 5120 * 2 -2] = 'J';
+
+    //write_file("/file", data, 1 * MB + 5120*2 - 1);
+
+    write_file("/file", (char*)imgdata, 1041867);
+
+    
+    memset(data, '0', 1 * MB + 5120*2-1);
+    memset(imgdata, '0', 1041867);
+
+    //read_file("/file", data, 1 * MB + 5120*2-1);
+    read_file("/file", (char*)imgdata, 1041867);
+
+    printf("%s\n",data);
+
+
+    FILE* fptr = fopen("./disk","w");
+    fwrite(virtual_disk, sizeof(char), DISK_SIZE, fptr);
+    fclose(fptr);
+
+    fptr = fopen("./out.png","w");
+    fwrite(imgdata, sizeof(char), 1041867, fptr);
+    fclose(fptr);
+
+    //write_file("file", 0, 0); // does not work
+    //write_file("/dir/file", 0, 0); // does not work
+
+    /*create_directory("/dir");
+    write_file("/dir/file", 0, 0);
+    create_directory("/dir/dir2");
+    write_file("/dir/dir2/file", 0, 0);*/
+}
+
+int main()
+{
+    memset(virtual_disk, 0, DISK_SIZE);
+    super_node_t super_node;
+    strcpy(super_node.magic, "magisk.1690243253");
+    super_node.nodes_count = 10000;
+    super_node.data_block_size = 512 * 10;
+    super_node.data_blocks_count = (DISK_SIZE - 512 * 2 - super_node.nodes_count * sizeof(node_t)) / super_node.data_block_size;
+    memcpy(virtual_disk, &super_node, sizeof(super_node_t));
+
+    find_filesystem();
+    create_root_directory();
+
+    printf("super: sizeof node_t %ld\n", sizeof(node_t));
+    printf("super: filesystem root sector %d\n", fs_start);
+    printf("super: number of nodes in fs: %d\n", super_node.nodes_count);
+    printf("super: number of blocks in fs: %d\n", super_node.data_blocks_count);
+
+    size_t size = 0;
+    write_file("/test", "1234", 4);
+    file_size("/test", &size);
+    printf("%ld", size);
+}
+
+int main()
+{
+    memset(virtual_disk, 0, DISK_SIZE);
+    super_node_t super_node;
+    strcpy(super_node.magic, "magisk.1690243253");
+    super_node.nodes_count = 10000;
+    super_node.data_block_size = 512 * 10;
+    super_node.data_blocks_count = (DISK_SIZE - 512 * 2 - super_node.nodes_count * sizeof(node_t)) / super_node.data_block_size;
+    memcpy(virtual_disk, &super_node, sizeof(super_node_t));
+
+    find_filesystem();
+    create_root_directory();
+
+    printf("super: sizeof node_t %ld\n", sizeof(node_t));
+    printf("super: filesystem root sector %d\n", fs_start);
+    printf("super: number of nodes in fs: %d\n", super_node.nodes_count);
+    printf("super: number of blocks in fs: %d\n", super_node.data_blocks_count);
+
+    size_t size = 0;
+    char data[100];
+    memset(data, 0, 100);
+
+    printf("\n\n");
+
+    write_file("/test", "1234", 4);
+    write_file("/test2", "1234", 4);
+    create_directory("/dir");
+    write_file("/test3", "1234", 4);
+    write_file("/dir/terrydavisquotes", "i have a talking space alien.", 29);
+    create_directory("/dir/dir2");
+    write_file("/dir/dir2/another_file", "1234", 4);
+    file_size("/test", &size);
+
+
+    printf("listing /\n");
+    list_directory("/");
+    printf("\nlisting /dir\n");
+    list_directory("/dir");
+    printf("\nlisting /dir/dir2\n");
+    list_directory("/dir/dir2");
+    printf("\nreading /dir/terrydavisquotes\n");
+    read_file("/dir/terrydavisquotes", data, 29);
+    printf("%s\n\n", data);
+}

@@ -1,0 +1,44 @@
+int main()
+{
+    virtual_disk = (uint8_t*)malloc(DISK_SIZE);
+    memset(virtual_disk, 0, DISK_SIZE);
+    super_node_t super_node;
+    super_node.mount_size = DISK_SIZE;
+    strcpy(super_node.magic, "magisk.1690243253");
+    super_node.nodes_count = 10000;
+    super_node.data_block_size = 512 * 10;
+    super_node.data_blocks_count = (DISK_SIZE - 512 * 2 - super_node.nodes_count * sizeof(node_t)) / super_node.data_block_size;
+    memcpy(virtual_disk, &super_node, sizeof(super_node_t));
+
+    find_filesystem();
+    create_root_directory();
+
+    printf("virtual disk size %d mb\n", DISK_SIZE / MB);
+    printf("super: sizeof node_t %ld\n", sizeof(node_t));
+    printf("super: filesystem root sector %d\n", fs_start);
+    printf("super: number of nodes in fs: %d\n", super_node.nodes_count);
+    printf("super: number of blocks in fs: %d\n", super_node.data_blocks_count);
+
+    size_t size;
+    char data[100];
+    memset(data, 0, 100);
+    write_file("/test2", "1234", 4);
+    create_directory("/dir");
+    write_file("/test3", "1234", 4);
+    write_file("/dir/terrydavisquotes", "i have a talking space alien.", 29);
+    create_directory("/dir/dir2");
+    write_file("/dir/dir2/another_file", "1234", 4);
+    write_file("/dir/dir2/test", "abc", 3);
+    file_size("/test", &size);
+
+
+    printf("listing /\n");
+    list_directory("/", 0);
+    printf("\nlisting /dir\n");
+    list_directory("/dir", 0);
+    printf("\nlisting /dir/dir2\n");
+    list_directory("/dir/dir2", 0);
+    read_file("/dir/terrydavisquotes", data, 29);
+    printf("\nreading /dir/terrydavisquotes\n");
+    printf("%s\n\n", data);
+}

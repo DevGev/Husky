@@ -1,0 +1,72 @@
+#1  Layout on disk
+ ----------------------------- 
+| nodes sizeof=512*3          |    A node is either a file or directory entry.
+|-----------------------------|
+| data blocks                 |    A data block contains a 1 byte "flag" [to remember if it is in use],
+| sizeof=512*10               |    The rest of the data block (512*10-1) is used for file data.
+|                             |    However, a data block can also be indirect, meaning it does not contain
+|                             |    any file data, meaning it holds extra pointers to data blocks 
+|                             |    [when the nodes own data block pointers won't suffice in size].
+ ----------------------------- 
+
+#2  Node and hash concepts
+The husky filesystem is built around the concept of "associated hashes" and "own hashes". Each node (directory or file entry) contains one associated hash
+and one own hash. The hash of the node is calculated using the name of the node. A file with pathname "/dir/file" will have a unique hash calculated from
+the string "/dir/file". The associated hash of this node will be calculated from the path "/dir". To find file "/dir/file" create a hash from the pathname
+string and search for node with it as "own hash". To list the contents of "/dir" create a hash from the path and search for nodes with it as "associated hash".
+For this technique to work a unique string MUST generate a unique hash, therefore multiple hashing functions are used to create more than one hash integer,
+these together form the master hash or complete hash (hhash_t).
+
+#3  Indirect data blocks
+Each node holds 100 pointers to data blocks, without indirect data blocks the max file size would be: 100 * (512 * 10 - 1). A pointer is a uint32_t holding
+a sector number. The node also holds 210 pointers to indirect data blocks, also known as iblocks. An iblock has exactly the same size as a normal data block 
+(512 * 10), however, the flag of an iblock is not 1 byte, it is instead 4 bytes [out of convenience to ensure uint32_t pointer alignment] see fig 1. The use
+of iblocks means that the max file size becomes: (100 * (512 * 10 - 1)) + (210 * (1279 * (512 * 10 - 1))) ~= 1.375 GB. A normal data block contains contiguos
+data with size: 512 * 10 - 1 bytes (subtract 1 byte due to flag), see fig 2.
+
+ --------------------              -------------------
+| 4 byte flag        |            | 1 byte flag       |
+|--------------------|            |-------------------|
+| pointers           |            | contiguos data    |
+| sizeof each=4      |            | sizeof=512*10-1   |
+ --------------------              -------------------
+ fig 1.                            fig 2.
+
+#4  Super node
+Each mounted husky filesystem should contain a super node. The super node should always be the first node in the filesystem (index 0). The super node contains
+data about the filesystem: the maximum amount of nodes, the maximum amount of data blocks, the size of one single data block, etc. The first field of the super
+node is the "magic". The matching magic string should be: "magisk.1690243253". The super node also provides the known base sector of the filesystem; since the
+super node always appears first and always has the same magic.
+
+#5  Structure definitions in C
+
+These are the C structures defined for the husky filesystem. Note the multi integer hash (hhash_t). The indirect block structure might not be used in actual
+implementation of the filesystem, however, it provides a great visualization. To minimize RAM usage the iblock structure can be replaced by direct disk access.
+
+
+typedef struct hhash {         typedef struct block {    typedef struct indirect_block
+    uint32_t h1;                   uint8_t flags;            uint32_t data_block_ptrs[1279];
+    uint32_t h2;               } block_t;                } indirect_block_t;
+    uint16_t le;
+} hhash_t;                     
+
+typedef struct super_node {
+    char magic[25];
+    uint32_t nodes_count;
+    uint32_t data_blocks_count;
+    uint32_t data_block_size;
+} __attribute__((packed)) super_node_t;
+
+typedef struct node {
+    uint8_t type; /* 0 = not in use */
+    uint32_t uid;
+    uint32_t size_in_bytes;
+    uint32_t modification_time;
+    uint32_t creation_time;
+    uint32_t last_access_time;
+    char name[255];
+    hhash_t own_hash;
+    hhash_t assoc_hash;
+    uint32_t blocks_ptrs[100];
+    uint32_t iblocks_ptrs[210];
+} __attribute__((packed)) node_t;

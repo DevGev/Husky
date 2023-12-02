@@ -1,0 +1,23 @@
+int main()
+{
+    memset(virtual_disk, 0, DISK_SIZE);
+    super_node_t super_node;
+    strcpy(super_node.magic, "magisk.1690243253");
+    super_node.nodes_count = 10000;
+    super_node.data_block_size = 512 * 10;
+    super_node.data_blocks_count = (DISK_SIZE - 512 * 2 - super_node.nodes_count * sizeof(node_t)) / super_node.data_block_size;
+    memcpy(virtual_disk, &super_node, sizeof(super_node_t));
+
+    find_filesystem();
+    create_root_directory();
+
+    printf("super: sizeof node_t %ld\n", sizeof(node_t));
+    printf("super: filesystem root sector %d\n", fs_start);
+    printf("super: number of nodes in fs: %d\n", super_node.nodes_count);
+    printf("super: number of blocks in fs: %d\n", super_node.data_blocks_count);
+
+    size_t size = 0;
+    write_file("/test", "1234", 4);
+    file_size("/test", &size);
+    printf("%ld", size);
+}
